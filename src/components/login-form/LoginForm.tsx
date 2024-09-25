@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Form, {
   Item,
   Label,
@@ -11,12 +11,13 @@ import Form, {
 import LoadIndicator from 'devextreme-react/load-indicator';
 import notify from 'devextreme/ui/notify';
 import { useAuth } from '../../contexts/auth';
+import Cookies from 'js-cookie';
 
 import './LoginForm.scss';
 
 export default function LoginForm() {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn } = useAuth(); 
   const [loading, setLoading] = useState(false);
   const formData = useRef({ email: '', password: '' });
 
@@ -26,18 +27,17 @@ export default function LoginForm() {
       const { email, password } = formData.current;
       setLoading(true);
 
-      const result = await signIn(email, password);
-      if (!result.isOk) {
-        setLoading(false);
-        notify(result.message, 'error', 2000);
+      const result = await signIn(email, password); 
+      if (result.isOk) {
+        Cookies.set('user', JSON.stringify(result.data)); 
+        navigate('/'); 
+      } else {
+        notify(result.message, 'error', 2000); 
       }
+      setLoading(false);
     },
     [signIn]
   );
-
-  const onCreateAccountClick = useCallback(() => {
-    navigate('/create-account');
-  }, [navigate]);
 
   return (
     <form className={'login-form'} onSubmit={onSubmit}>
@@ -59,13 +59,7 @@ export default function LoginForm() {
           <RequiredRule message="Password is required" />
           <Label visible={false} />
         </Item>
-        <Item
-          dataField={'rememberMe'}
-          editorType={'dxCheckBox'}
-          editorOptions={rememberMeEditorOptions}
-        >
-          <Label visible={false} />
-        </Item>
+
         <ButtonItem>
           <ButtonOptions
             width={'100%'}
@@ -81,18 +75,6 @@ export default function LoginForm() {
             </span>
           </ButtonOptions>
         </ButtonItem>
-        <Item>
-          <div className={'link'}>
-            <Link to={'/reset-password'}>Forgot password?</Link>
-          </div>
-        </Item>
-        <ButtonItem>
-          <ButtonOptions
-            text={'Create an account'}
-            width={'100%'}
-            onClick={onCreateAccountClick}
-          />
-        </ButtonItem>
       </Form>
     </form>
   );
@@ -107,8 +89,4 @@ const passwordEditorOptions = {
   stylingMode: 'filled',
   placeholder: 'Password',
   mode: 'password',
-};
-const rememberMeEditorOptions = {
-  text: 'Remember me',
-  elementAttr: { class: 'form-text' },
 };
