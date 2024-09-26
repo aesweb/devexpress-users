@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Form, { Item, GroupItem, ButtonItem } from 'devextreme-react/form';
 import DataGrid, {
   Column,
   HeaderFilter,
-  Paging,
   Pager,
+  Editing,
+  SearchPanel,
+  ColumnChooser,
+  FilterRow,
 } from 'devextreme-react/data-grid';
-import Button from 'devextreme-react/button';
 import LoadIndicator from 'devextreme-react/load-indicator';
 import { useUser } from '../../contexts/UserContext';
 
@@ -98,6 +100,8 @@ export default function EditUser() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { setUpdatedUser, users, cartProducts, setCartProducts } = useUser();
+  const [updatedProducts, setUpdatedProducts] = useState<CartProduct[]>([]);
+  const [deletedProductIds, setDeletedProductIds] = useState<number[]>([]);
 
   useEffect(() => {
     const fetchUserAndCart = async () => {
@@ -156,7 +160,6 @@ export default function EditUser() {
           };
         }
 
-        // Normal alanlar için
         return {
           ...prevUser,
           [dataField]: value,
@@ -164,6 +167,20 @@ export default function EditUser() {
       });
     }
   };
+
+  const handleProductUpdate = useCallback(
+    (key: number, data: Partial<CartProduct>) => {
+      setUpdatedProducts((prev) => {
+        const existingIndex = prev.findIndex((p) => p.id === key);
+        if (existingIndex >= 0) {
+          return prev.map((p) => (p.id === key ? { ...p, ...data } : p));
+        } else {
+          return [...prev, { id: key, ...data } as CartProduct];
+        }
+      });
+    },
+    []
+  );
 
   const handleSubmit = async () => {
     if (!user) return;
@@ -175,11 +192,26 @@ export default function EditUser() {
         body: JSON.stringify(user),
       });
       const updatedUser = await response.json();
-      console.log('User updated:', updatedUser);
       setUpdatedUser(updatedUser);
+
+      // Update products
+      const updatedCartProducts = cartProducts[Number(id)]
+        .map((product) => {
+          const updatedProduct = updatedProducts.find(
+            (p) => p.id === product.id
+          );
+          return updatedProduct ? { ...product, ...updatedProduct } : product;
+        })
+        .filter((product) => !deletedProductIds.includes(product.id));
+
+      setCartProducts((prev) => ({
+        ...prev,
+        [Number(id)]: updatedCartProducts,
+      }));
+
       navigate('/users');
     } catch (error) {
-      console.error('Error updating user:', error);
+      console.error('Error updating user or products:', error);
     }
   };
 
@@ -190,37 +222,6 @@ export default function EditUser() {
   const discountCellRender = (cellData: { value: number }) => (
     <div className="discount-cell">{cellData.value.toFixed(2)}%</div>
   );
-
-  const handleDeleteProduct = async (productId: number) => {
-    try {
-      // API çağrısı simülasyonu
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Ürünü yerel state'den kaldır
-      setCartProducts((prev) => ({
-        ...prev,
-        [Number(id)]: prev[Number(id)].filter(
-          (product) => product.id !== productId
-        ),
-      }));
-
-      console.log(`Product with id ${productId} deleted successfully`);
-    } catch (error) {
-      console.error('Error deleting product:', error);
-    }
-  };
-
-  const renderActionButtons = (cellData: { data: CartProduct }) => {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-        <Button
-          icon="trash"
-          onClick={() => handleDeleteProduct(cellData.data.id)}
-          stylingMode="text"
-        />
-      </div>
-    );
-  };
 
   if (loading) {
     return <LoadIndicator />;
@@ -309,17 +310,30 @@ export default function EditUser() {
       <h2 className={'content-block'}>User's Cart Products</h2>
       <DataGrid
         className="content-block dx-card responsive-paddings"
-        dataSource={cartProducts[Number(id)] || []}
+        dataSource={
+          cartProducts[Number(id)]?.filter(
+            (p) => !deletedProductIds.includes(p.id)
+          ) || []
+        }
         keyExpr="id"
         showBorders={true}
         focusedRowEnabled={true}
         columnAutoWidth={true}
         wordWrapEnabled={true}
         columnHidingEnabled={true}
+        onRowUpdating={(e) => handleProductUpdate(e.key, e.newData)}
       >
+        <Editing
+          mode="row"
+          allowUpdating={true}
+          allowDeleting={true}
+          useIcons={true}
+        />
         <HeaderFilter visible={true} />
-        <Paging defaultPageSize={10} />
         <Pager showPageSizeSelector={true} showInfo={true} />
+        <SearchPanel visible={true} />
+        <ColumnChooser enabled={true} />
+        <FilterRow visible={true} />
 
         <Column
           dataField={'title'}
@@ -352,7 +366,7 @@ export default function EditUser() {
         />
         <Column
           dataField={'discountPercentage'}
-          caption={'Discount %'}
+          caption={'Discount'}
           alignment="center"
           cellRender={discountCellRender}
           allowHeaderFiltering={true}
@@ -367,12 +381,6 @@ export default function EditUser() {
             return `$ ${discountedTotal.toFixed(2)}`;
           }}
           allowHeaderFiltering={true}
-        />
-        <Column
-          cellRender={renderActionButtons}
-          width={100}
-          allowFiltering={false}
-          allowHeaderFiltering={false}
         />
       </DataGrid>
     </React.Fragment>

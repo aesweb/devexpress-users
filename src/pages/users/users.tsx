@@ -245,7 +245,7 @@ export default function Users() {
         />
         <Column
           dataField={'discountPercentage'}
-          caption={'Discount %'}
+          caption={'Discount'}
           alignment="center"
           cellRender={discountCellRender}
           allowFiltering={true}
