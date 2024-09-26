@@ -95,10 +95,9 @@ interface CartProduct {
 export default function EditUser() {
   const { id } = useParams<{ id: string }>();
   const [user, setUser] = useState<User | null>(null);
-  const [cartProducts, setCartProducts] = useState<CartProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { setUpdatedUser, users } = useUser();
+  const { setUpdatedUser, users, cartProducts, setCartProducts } = useUser();
 
   useEffect(() => {
     const fetchUserAndCart = async () => {
@@ -113,17 +112,19 @@ export default function EditUser() {
         }
         setUser(userData);
 
-        const cartResponse = await fetch(
-          `https://dummyjson.com/carts/user/${id}`
-        );
-        const cartData = await cartResponse.json();
-        const products = cartData.carts.flatMap((cart: any) =>
-          cart.products.map((product: CartProduct) => ({
-            ...product,
-            cartId: cart.id,
-          }))
-        );
-        setCartProducts(products);
+        if (!cartProducts[Number(id)]) {
+          const cartResponse = await fetch(
+            `https://dummyjson.com/carts/user/${id}`
+          );
+          const cartData = await cartResponse.json();
+          const products = cartData.carts.flatMap((cart: any) =>
+            cart.products.map((product: CartProduct) => ({
+              ...product,
+              cartId: cart.id,
+            }))
+          );
+          setCartProducts((prev) => ({ ...prev, [Number(id)]: products }));
+        }
       } catch (error) {
         console.error('Error fetching user or cart:', error);
       } finally {
@@ -132,7 +133,7 @@ export default function EditUser() {
     };
 
     fetchUserAndCart();
-  }, [id, users]);
+  }, [id, users, cartProducts, setCartProducts]);
 
   const handleFieldDataChanged = (e: any) => {
     if (user) {
@@ -190,24 +191,28 @@ export default function EditUser() {
     <div className="discount-cell">{cellData.value.toFixed(2)}%</div>
   );
 
-  const handleEditProduct = (productId: number) => {
-    // Ürün düzenleme mantığı buraya gelecek
-    console.log(`Editing product with id: ${productId}`);
-  };
+  const handleDeleteProduct = async (productId: number) => {
+    try {
+      // API çağrısı simülasyonu
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-  const handleDeleteProduct = (productId: number) => {
-    // Ürün silme mantığı buraya gelecek
-    console.log(`Deleting product with id: ${productId}`);
+      // Ürünü yerel state'den kaldır
+      setCartProducts((prev) => ({
+        ...prev,
+        [Number(id)]: prev[Number(id)].filter(
+          (product) => product.id !== productId
+        ),
+      }));
+
+      console.log(`Product with id ${productId} deleted successfully`);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+    }
   };
 
   const renderActionButtons = (cellData: { data: CartProduct }) => {
     return (
       <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-        <Button
-          icon="edit"
-          onClick={() => handleEditProduct(cellData.data.id)}
-          stylingMode="text"
-        />
         <Button
           icon="trash"
           onClick={() => handleDeleteProduct(cellData.data.id)}
@@ -303,7 +308,8 @@ export default function EditUser() {
 
       <h2 className={'content-block'}>User's Cart Products</h2>
       <DataGrid
-        dataSource={cartProducts}
+        className="content-block dx-card responsive-paddings"
+        dataSource={cartProducts[Number(id)] || []}
         keyExpr="id"
         showBorders={true}
         focusedRowEnabled={true}
@@ -363,7 +369,6 @@ export default function EditUser() {
           allowHeaderFiltering={true}
         />
         <Column
-          caption={'Actions'}
           cellRender={renderActionButtons}
           width={100}
           allowFiltering={false}

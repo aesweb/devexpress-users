@@ -33,9 +33,15 @@ interface CartProduct {
 }
 
 export default function Users() {
-  const { users, setUsers, updatedUser, setUpdatedUser } = useUser();
+  const {
+    users,
+    setUsers,
+    updatedUser,
+    setUpdatedUser,
+    cartProducts,
+    setCartProducts,
+  } = useUser();
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [cartProducts, setCartProducts] = useState<CartProduct[]>([]);
   const navigate = useNavigate();
 
   const fetchUsers = useCallback(async () => {
@@ -46,38 +52,43 @@ export default function Users() {
     }
   }, [users, setUsers]);
 
+  const fetchUserCart = useCallback(
+    async (userId: number) => {
+      if (!cartProducts[userId]) {
+        const response = await fetch(
+          `https://dummyjson.com/carts/user/${userId}`
+        );
+        const data = await response.json();
+        const products = data.carts.flatMap((cart: any) =>
+          cart.products.map((product: CartProduct) => ({
+            ...product,
+            cartId: cart.id,
+          }))
+        );
+        setCartProducts((prev) => ({ ...prev, [userId]: products }));
+      }
+    },
+    [cartProducts, setCartProducts]
+  );
+
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
   useEffect(() => {
     if (updatedUser) {
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
           user.id === updatedUser.id ? updatedUser : user
         )
       );
-      setUpdatedUser(null);  // Güncellemeyi sıfırla
+      setUpdatedUser(null);
     }
   }, [updatedUser, setUsers, setUpdatedUser]);
-
-  const fetchUserCart = useCallback(async (userId: number) => {
-    const response = await fetch(`https://dummyjson.com/carts/user/${userId}`);
-    const data = await response.json();
-    const products = data.carts.flatMap((cart: any) =>
-      cart.products.map((product: CartProduct) => ({
-        ...product,
-        cartId: cart.id,
-      }))
-    );
-    setCartProducts(products);
-  }, []);
 
   useEffect(() => {
     if (selectedUserId) {
       fetchUserCart(selectedUserId);
-    } else {
-      setCartProducts([]);
     }
   }, [selectedUserId, fetchUserCart]);
 
@@ -101,6 +112,7 @@ export default function Users() {
     <React.Fragment>
       <h2 className={'content-block'}>Users</h2>
       <DataGrid
+        className="content-block dx-card responsive-paddings"
         allowColumnReordering={true}
         dataSource={users}
         keyExpr="id"
@@ -154,7 +166,8 @@ export default function Users() {
 
       <h2 className={'content-block'}>User's Cart Products</h2>
       <DataGrid
-        dataSource={cartProducts}
+        className="content-block dx-card responsive-paddings"
+        dataSource={selectedUserId ? cartProducts[selectedUserId] || [] : []}
         keyExpr="id"
         showBorders={true}
         focusedRowEnabled={true}
