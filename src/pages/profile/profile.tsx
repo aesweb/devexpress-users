@@ -1,23 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './profile.scss';
-import Form from 'devextreme-react/form';
+import Form, { Item } from 'devextreme-react/form';
+import { useAuth } from '../../contexts/auth';
 
 export default function Profile() {
-  const [notes, setNotes] = useState(
-    'Sandra is a CPA and has been our controller since 2008. She loves to interact with staff so if you`ve not met her, be certain to say hi.\r\n\r\nSandra has 2 daughters both of whom are accomplished gymnasts.'
-  );
-  const employee = {
-    ID: 7,
-    FirstName: 'Sandra',
-    LastName: 'Johnson',
-    Prefix: 'Mrs.',
-    Position: 'Controller',
-    Picture: 'images/employees/06.png',
-    BirthDate: new Date('1974/11/5'),
-    HireDate: new Date('2005/05/11'),
-    Notes: notes,
-    Address: '4600 N Virginia Rd.',
-  };
+  const { user } = useAuth();
+  const [notes, setNotes] = useState('');
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (user && user.email) {
+        try {
+          const response = await fetch(`https://dummyjson.com/users/search?q=${user.email}`);
+          const data = await response.json();
+          if (data.users && data.users.length > 0) {
+            setUserData(data.users[0]);
+            setNotes(data.users[0].company?.title || '');
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        }
+      }
+    };
+
+    fetchUserData();
+  }, [user]);
+
+  if (!userData) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <React.Fragment>
@@ -27,7 +39,7 @@ export default function Profile() {
         <div className={'form-avatar'}>
           <img
             alt={''}
-            src={`https://js.devexpress.com/Demos/WidgetsGallery/JSDemos/${employee.Picture}`}
+            src={userData.image || user?.avatarUrl}
           />
         </div>
         <span>{notes}</span>
@@ -36,13 +48,22 @@ export default function Profile() {
       <div className={'content-block dx-card responsive-paddings'}>
         <Form
           id={'form'}
-          defaultFormData={employee}
-          onFieldDataChanged={(e) =>
-            e.dataField === 'Notes' && setNotes(e.value)
-          }
+          defaultFormData={userData}
+          onFieldDataChanged={(e) => {
+            if (e.dataField === 'company.title') {
+              setNotes(e.value);
+            }
+          }}
           labelLocation={'top'}
           colCountByScreen={colCountByScreen}
-        />
+        >
+          <Item dataField={'firstName'} />
+          <Item dataField={'lastName'} />
+          <Item dataField={'email'} />
+          <Item dataField={'phone'} />
+          <Item dataField={'address.address'} />
+          <Item dataField={'company.title'} />
+        </Form>
       </div>
     </React.Fragment>
   );

@@ -3,7 +3,7 @@ import { withNavigationWatcher } from './contexts/navigation';
 
 const routes = [
   {
-    path: '/home',
+    path: '/',
     element: HomePage
   },
   {

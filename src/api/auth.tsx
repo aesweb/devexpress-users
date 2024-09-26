@@ -57,4 +57,3 @@ export async function getUser() {
   }
 }
 
-// changePassword ve resetPassword fonksiyonlarını kaldırdık

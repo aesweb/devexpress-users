@@ -20,6 +20,7 @@ interface User {
   lastName: string;
   email: string;
   phone: string;
+  image: any;
 }
 
 interface CartProduct {
@@ -30,6 +31,7 @@ interface CartProduct {
   total: number;
   discountPercentage: number;
   cartId?: number;
+  thumbnail: any;
 }
 
 export default function Users() {
@@ -108,6 +110,32 @@ export default function Users() {
     return <Button icon="edit" onClick={() => editUser(cellData.data.id)} />;
   };
 
+  const renderUserCell = (cellData: { data: User }) => {
+    return (
+      <div className="user-cell">
+        <img
+          src={cellData.data.image}
+          alt={`${cellData.data.firstName} ${cellData.data.lastName}`}
+          className="user-avatar"
+        />
+        <span>{`${cellData.data.firstName} ${cellData.data.lastName}`}</span>
+      </div>
+    );
+  };
+
+  const renderProductCell = (cellData: { data: CartProduct }) => {
+    return (
+      <div className="product-cell">
+        <img
+          src={cellData.data.thumbnail}
+          alt={cellData.data.title}
+          className="product-image"
+        />
+        <span>{cellData.data.title}</span>
+      </div>
+    );
+  };
+
   return (
     <React.Fragment>
       <h2 className={'content-block'}>Users</h2>
@@ -126,19 +154,18 @@ export default function Users() {
         <FilterRow visible={true} />
         <HeaderFilter visible={true} />
         <SearchPanel visible={true} />
-
         <Paging defaultPageSize={10} />
         <Pager showPageSizeSelector={true} showInfo={true} />
 
         <Column
           caption={'User'}
-          calculateCellValue={(rowData: User) =>
+          calculateCellValue={(rowData) =>
             `${rowData.firstName} ${rowData.lastName}`
           }
+          cellRender={renderUserCell}
           allowFiltering={true}
           allowHeaderFiltering={true}
         />
-        <ColumnChooser enabled={true} />
         <Column
           dataField={'phone'}
           caption={'Phone'}
@@ -162,6 +189,7 @@ export default function Users() {
           cellRender={renderEditButton}
           width={100}
         />
+        <ColumnChooser enabled={true} />
       </DataGrid>
 
       <h2 className={'content-block'}>User's Cart Products</h2>
@@ -175,13 +203,17 @@ export default function Users() {
         wordWrapEnabled={true}
         columnHidingEnabled={true}
       >
+        <FilterRow visible={true} />
         <HeaderFilter visible={true} />
+        <SearchPanel visible={true} />
         <Paging defaultPageSize={10} />
         <Pager showPageSizeSelector={true} showInfo={true} />
 
         <Column
+          caption={'Product'}
           dataField={'title'}
-          caption={'Product Name'}
+          cellRender={renderProductCell}
+          allowFiltering={true}
           allowHeaderFiltering={true}
         />
         <Column
@@ -191,12 +223,14 @@ export default function Users() {
           cellRender={(cellData: { value: number }) =>
             `$ ${cellData.value.toFixed(2)}`
           }
+          allowFiltering={true}
           allowHeaderFiltering={true}
         />
         <Column
           dataField={'quantity'}
           caption={'Quantity'}
           alignment="center"
+          allowFiltering={true}
           allowHeaderFiltering={true}
         />
         <Column
@@ -206,6 +240,7 @@ export default function Users() {
           cellRender={(cellData: { value: number }) =>
             `$ ${cellData.value.toFixed(2)}`
           }
+          allowFiltering={true}
           allowHeaderFiltering={true}
         />
         <Column
@@ -213,6 +248,7 @@ export default function Users() {
           caption={'Discount %'}
           alignment="center"
           cellRender={discountCellRender}
+          allowFiltering={true}
           allowHeaderFiltering={true}
         />
         <Column
@@ -224,8 +260,10 @@ export default function Users() {
               (rowData.total * rowData.discountPercentage) / 100;
             return `$ ${discountedTotal.toFixed(2)}`;
           }}
-          allowHeaderFiltering={true}
+          allowFiltering={false}
+          allowHeaderFiltering={false}
         />
+        <ColumnChooser enabled={true} />
       </DataGrid>
     </React.Fragment>
   );
