@@ -1,24 +1,28 @@
-import { HomePage, UsersPage, ProfilePage } from './pages';
+import { HomePage, ProfilePage, UsersPage, EditUserPage } from './pages';
 import { withNavigationWatcher } from './contexts/navigation';
 
 const routes = [
   {
-    path: '/users',
-    element: UsersPage,
+    path: '/home',
+    element: HomePage
   },
   {
     path: '/profile',
-    element: ProfilePage,
+    element: ProfilePage
   },
   {
-    path: '/home',
-    element: HomePage,
+    path: '/users',
+    element: UsersPage
   },
+  {
+    path: '/edit-user/:id',
+    element: EditUserPage
+  }
 ];
 
-export default routes.map((route) => {
+export default routes.map(route => {
   return {
     ...route,
-    element: withNavigationWatcher(route.element, route.path),
+    element: withNavigationWatcher(route.element, route.path)
   };
 });

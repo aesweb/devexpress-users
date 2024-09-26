@@ -80,7 +80,12 @@ export default function Users() {
   };
 
   const renderEditButton = (cellData: { data: User }) => {
-    return <Button icon="edit" onClick={() => editUser(cellData.data.id)} />;
+    return (
+      <Button
+        icon="edit"
+        onClick={() => editUser(cellData.data.id)}
+      />
+    );
   };
 
   return (
@@ -134,7 +139,7 @@ export default function Users() {
           allowFiltering={false}
           allowHeaderFiltering={false}
           cellRender={renderEditButton}
-          width={200}
+          width={100}
         />
       </DataGrid>
 
