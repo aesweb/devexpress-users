@@ -12,6 +12,7 @@ import { FocusedRowChangedEvent } from 'devextreme/ui/data_grid';
 import { useNavigate } from 'react-router-dom';
 import Button from 'devextreme-react/button';
 import './users.css';
+import { useUser } from '../../contexts/UserContext';
 
 interface User {
   id: number;
@@ -32,20 +33,33 @@ interface CartProduct {
 }
 
 export default function Users() {
-  const [users, setUsers] = useState<User[]>([]);
+  const { users, setUsers, updatedUser, setUpdatedUser } = useUser();
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [cartProducts, setCartProducts] = useState<CartProduct[]>([]);
   const navigate = useNavigate();
 
   const fetchUsers = useCallback(async () => {
-    const response = await fetch('https://dummyjson.com/users');
-    const data = await response.json();
-    setUsers(data.users);
-  }, []);
+    if (users.length === 0) {
+      const response = await fetch('https://dummyjson.com/users');
+      const data = await response.json();
+      setUsers(data.users);
+    }
+  }, [users, setUsers]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    if (updatedUser) {
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === updatedUser.id ? updatedUser : user
+        )
+      );
+      setUpdatedUser(null);  // Güncellemeyi sıfırla
+    }
+  }, [updatedUser, setUsers, setUpdatedUser]);
 
   const fetchUserCart = useCallback(async (userId: number) => {
     const response = await fetch(`https://dummyjson.com/carts/user/${userId}`);
@@ -80,12 +94,7 @@ export default function Users() {
   };
 
   const renderEditButton = (cellData: { data: User }) => {
-    return (
-      <Button
-        icon="edit"
-        onClick={() => editUser(cellData.data.id)}
-      />
-    );
+    return <Button icon="edit" onClick={() => editUser(cellData.data.id)} />;
   };
 
   return (

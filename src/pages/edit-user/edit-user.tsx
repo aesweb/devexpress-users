@@ -7,7 +7,9 @@ import DataGrid, {
   Paging,
   Pager,
 } from 'devextreme-react/data-grid';
+import Button from 'devextreme-react/button';
 import LoadIndicator from 'devextreme-react/load-indicator';
+import { useUser } from '../../contexts/UserContext';
 
 interface User {
   id: number;
@@ -96,12 +98,19 @@ export default function EditUser() {
   const [cartProducts, setCartProducts] = useState<CartProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { setUpdatedUser, users } = useUser();
 
   useEffect(() => {
     const fetchUserAndCart = async () => {
       try {
-        const userResponse = await fetch(`https://dummyjson.com/users/${id}`);
-        const userData = await userResponse.json();
+        let userData;
+        const existingUser = users.find((u) => u.id === Number(id));
+        if (existingUser) {
+          userData = existingUser;
+        } else {
+          const userResponse = await fetch(`https://dummyjson.com/users/${id}`);
+          userData = await userResponse.json();
+        }
         setUser(userData);
 
         const cartResponse = await fetch(
@@ -123,10 +132,39 @@ export default function EditUser() {
     };
 
     fetchUserAndCart();
-  }, [id]);
+  }, [id, users]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFieldDataChanged = (e: any) => {
+    if (user) {
+      const { dataField, value } = e;
+      setUser((prevUser) => {
+        if (!prevUser) return null;
+
+        // Nested alanlar için özel işlem
+        if (dataField.includes('.')) {
+          const [parent, child] = dataField.split('.');
+          return {
+            ...prevUser,
+            [parent]: {
+              ...(typeof prevUser[parent as keyof User] === 'object' &&
+              prevUser[parent as keyof User] !== null
+                ? (prevUser[parent as keyof User] as Record<string, unknown>)
+                : {}),
+              [child]: value,
+            },
+          };
+        }
+
+        // Normal alanlar için
+        return {
+          ...prevUser,
+          [dataField]: value,
+        };
+      });
+    }
+  };
+
+  const handleSubmit = async () => {
     if (!user) return;
 
     try {
@@ -137,6 +175,7 @@ export default function EditUser() {
       });
       const updatedUser = await response.json();
       console.log('User updated:', updatedUser);
+      setUpdatedUser(updatedUser);
       navigate('/users');
     } catch (error) {
       console.error('Error updating user:', error);
@@ -150,6 +189,33 @@ export default function EditUser() {
   const discountCellRender = (cellData: { value: number }) => (
     <div className="discount-cell">{cellData.value.toFixed(2)}%</div>
   );
+
+  const handleEditProduct = (productId: number) => {
+    // Ürün düzenleme mantığı buraya gelecek
+    console.log(`Editing product with id: ${productId}`);
+  };
+
+  const handleDeleteProduct = (productId: number) => {
+    // Ürün silme mantığı buraya gelecek
+    console.log(`Deleting product with id: ${productId}`);
+  };
+
+  const renderActionButtons = (cellData: { data: CartProduct }) => {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+        <Button
+          icon="edit"
+          onClick={() => handleEditProduct(cellData.data.id)}
+          stylingMode="text"
+        />
+        <Button
+          icon="trash"
+          onClick={() => handleDeleteProduct(cellData.data.id)}
+          stylingMode="text"
+        />
+      </div>
+    );
+  };
 
   if (loading) {
     return <LoadIndicator />;
@@ -165,9 +231,7 @@ export default function EditUser() {
       <div className={'content-block dx-card responsive-paddings'}>
         <Form
           formData={user}
-          onFieldDataChanged={(e) =>
-            setUser({ ...user, [e.dataField as keyof User]: e.value })
-          }
+          onFieldDataChanged={handleFieldDataChanged}
           labelLocation={'top'}
           colCount={1}
         >
@@ -182,8 +246,10 @@ export default function EditUser() {
             <Item dataField="height" />
             <Item dataField="weight" />
             <Item dataField="eyeColor" />
+
             <Item dataField="hair.color" />
             <Item dataField="hair.type" />
+
             <Item dataField="username" />
             <Item dataField="password" editorOptions={{ mode: 'password' }} />
           </GroupItem>
@@ -221,7 +287,7 @@ export default function EditUser() {
               text: 'Save',
               type: 'success',
               useSubmitBehavior: true,
-              onClick: (e: any) => handleSubmit(e as React.FormEvent),
+              onClick: handleSubmit,
             }}
           />
           <ButtonItem
@@ -295,6 +361,13 @@ export default function EditUser() {
             return `$ ${discountedTotal.toFixed(2)}`;
           }}
           allowHeaderFiltering={true}
+        />
+        <Column
+          caption={'Actions'}
+          cellRender={renderActionButtons}
+          width={100}
+          allowFiltering={false}
+          allowHeaderFiltering={false}
         />
       </DataGrid>
     </React.Fragment>

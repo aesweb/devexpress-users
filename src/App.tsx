@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './contexts/auth';
 import { useScreenSizeClass } from './utils/media-query';
 import Content from './Content';
 import UnauthenticatedContent from './UnauthenticatedContent';
+import { UserProvider } from './contexts/UserContext';
 
 function App() {
   const { user, loading } = useAuth();
@@ -19,7 +20,11 @@ function App() {
   }
 
   if (user) {
-    return <Content />;
+    return (
+      <UserProvider>
+        <Content />
+      </UserProvider>
+    );
   }
 
   return <UnauthenticatedContent />;
