@@ -5,9 +5,9 @@ import React, {
   useContext,
   useCallback,
 } from 'react';
-import { getUser, signIn as sendSignInRequest } from '../api/auth'; 
+import { getUser, signIn as sendSignInRequest } from '../api/auth';
 import type { User, AuthContextType } from '../types';
-import Cookies from 'js-cookie'; 
+import Cookies from 'js-cookie';
 
 function AuthProvider(props: React.PropsWithChildren<unknown>) {
   const [user, setUser] = useState<User>();
@@ -17,7 +17,7 @@ function AuthProvider(props: React.PropsWithChildren<unknown>) {
     (async function () {
       const userCookie = Cookies.get('user');
       if (userCookie) {
-        setUser(JSON.parse(userCookie)); 
+        setUser(JSON.parse(userCookie));
       } else {
         const result = await getUser();
         if (result.isOk) {
@@ -38,7 +38,7 @@ function AuthProvider(props: React.PropsWithChildren<unknown>) {
 
   const signOut = useCallback(() => {
     setUser(undefined);
-    Cookies.remove('user'); // Kullanıcı çıkış yaptığında cookie'yi sil
+    Cookies.remove('user');
   }, []);
 
   return (

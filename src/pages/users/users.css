@@ -1,0 +1,49 @@
+/* FilterRow'u sola dayalı yapmak için */
+.dx-datagrid .dx-datagrid-filter-row .dx-editor-cell {
+  text-align: left;
+}
+
+/* Dikey çizgiler için (başlıklar dahil) */
+.dx-datagrid-headers .dx-datagrid-table .dx-row > td,
+.dx-datagrid-rowsview .dx-row > td {
+  border-right: 1px solid #e0e0e0;
+}
+
+.dx-datagrid-headers .dx-datagrid-table .dx-row > td:last-child,
+.dx-datagrid-rowsview .dx-row > td:last-child {
+  border-right: none;
+}
+
+/* FilterRow'u sola yaslamak için */
+.dx-datagrid .dx-datagrid-filter-row .dx-editor-cell {
+  justify-content: flex-start;
+}
+
+/* HeaderFilter'ı sağa yaslamak için */
+.dx-datagrid-headers .dx-datagrid-table .dx-row > td {
+  position: relative;
+}
+
+.dx-header-filter {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* HeaderFilter ikonunu sağa yaslamak için */
+.dx-datagrid .dx-column-indicators {
+  float: right;
+}
+
+/* Başlık metnini sola yaslamak için */
+.dx-datagrid .dx-header-row > td {
+  padding-left: 10px;
+}
+
+.discount-cell {
+  background-color: #e6ffe6;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}

@@ -1,84 +1,203 @@
-import React, { useEffect, useState } from 'react';
-import DataGrid, { Column, Pager, Paging } from 'devextreme-react/data-grid';
+import React, { useEffect, useState, useCallback } from 'react';
+import DataGrid, {
+  Column,
+  FilterRow,
+  HeaderFilter,
+  Pager,
+  Paging,
+  SearchPanel,
+  ColumnChooser,
+} from 'devextreme-react/data-grid';
+import { FocusedRowChangedEvent } from 'devextreme/ui/data_grid';
+import { useNavigate } from 'react-router-dom';
+import Button from 'devextreme-react/button';
+import './users.css';
+
+interface User {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+interface CartProduct {
+  id: number;
+  title: string;
+  price: number;
+  quantity: number;
+  total: number;
+  discountPercentage: number;
+  cartId?: number;
+}
 
 export default function Users() {
-  const [users, setUsers] = useState([]);
-  const [products, setProducts] = useState([]); // New state for products
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [cartProducts, setCartProducts] = useState<CartProduct[]>([]);
+  const navigate = useNavigate();
+
+  const fetchUsers = useCallback(async () => {
+    const response = await fetch('https://dummyjson.com/users');
+    const data = await response.json();
+    setUsers(data.users);
+  }, []);
 
   useEffect(() => {
-    fetch('https://dummyjson.com/users')
-      .then((res) => res.json())
-      .then((data) => setUsers(data.users));
+    fetchUsers();
+  }, [fetchUsers]);
 
-    // Fetch products
-    fetch('https://dummyjson.com/products')
-      .then((res) => res.json())
-      .then((data) => setProducts(data.products)); // Set products data
+  const fetchUserCart = useCallback(async (userId: number) => {
+    const response = await fetch(`https://dummyjson.com/carts/user/${userId}`);
+    const data = await response.json();
+    const products = data.carts.flatMap((cart: any) =>
+      cart.products.map((product: CartProduct) => ({
+        ...product,
+        cartId: cart.id,
+      }))
+    );
+    setCartProducts(products);
   }, []);
+
+  useEffect(() => {
+    if (selectedUserId) {
+      fetchUserCart(selectedUserId);
+    } else {
+      setCartProducts([]);
+    }
+  }, [selectedUserId, fetchUserCart]);
+
+  const onFocusedRowChanged = (e: FocusedRowChangedEvent) => {
+    setSelectedUserId(e.row?.data.id);
+  };
+
+  const discountCellRender = (cellData: { value: number }) => (
+    <div className="discount-cell">{cellData.value.toFixed(2)}%</div>
+  );
+
+  const editUser = (userId: number) => {
+    navigate(`/edit-user/${userId}`);
+  };
+
+  const renderEditButton = (cellData: { data: User }) => {
+    return <Button icon="edit" onClick={() => editUser(cellData.data.id)} />;
+  };
 
   return (
     <React.Fragment>
-      <h2 className={'content-block'}>User List</h2>
-      <p className={'content-block'}>
-        Drag a column header to group by that column
-      </p>
-
+      <h2 className={'content-block'}>Users</h2>
       <DataGrid
-        className={'dx-card wide-card'}
+        allowColumnReordering={true}
         dataSource={users}
         keyExpr="id"
-        showBorders={false}
+        showBorders={true}
         focusedRowEnabled={true}
-        columnAutoWidth={true}
         columnHidingEnabled={true}
+        columnAutoWidth={true}
+        wordWrapEnabled={true}
+        onFocusedRowChanged={onFocusedRowChanged}
       >
+        <FilterRow visible={true} />
+        <HeaderFilter visible={true} />
+        <SearchPanel visible={true} />
+
         <Paging defaultPageSize={10} />
         <Pager showPageSizeSelector={true} showInfo={true} />
 
-        <Column dataField={'firstName'} caption={'User'} />
-        <Column dataField={'phone'} caption={'Phone'} />
-        <Column dataField={'email'} caption={'Email'} />
-        <Column caption={'Action'} cellRender={() => <span>X</span>} />
+        <Column
+          caption={'User'}
+          calculateCellValue={(rowData: User) =>
+            `${rowData.firstName} ${rowData.lastName}`
+          }
+          allowFiltering={true}
+          allowHeaderFiltering={true}
+        />
+        <ColumnChooser enabled={true} />
+        <Column
+          dataField={'phone'}
+          caption={'Phone'}
+          alignment="center"
+          allowFiltering={true}
+          allowHeaderFiltering={true}
+        />
+        <Column
+          dataField={'email'}
+          caption={'Email'}
+          alignment="center"
+          allowFiltering={true}
+          allowHeaderFiltering={true}
+        />
+        <Column
+          dataField={'id'}
+          caption={'Action'}
+          alignment="center"
+          allowFiltering={false}
+          allowHeaderFiltering={false}
+          cellRender={renderEditButton}
+          width={200}
+        />
       </DataGrid>
 
-      <h2 className={'content-block'}>Product List</h2>
-      <p className={'content-block'}>
-        Drag a column header to group by that column
-      </p>
-
+      <h2 className={'content-block'}>User's Cart Products</h2>
       <DataGrid
-        className={'dx-card wide-card'}
-        dataSource={products}
+        dataSource={cartProducts}
         keyExpr="id"
-        showBorders={false}
+        showBorders={true}
         focusedRowEnabled={true}
         columnAutoWidth={true}
+        wordWrapEnabled={true}
         columnHidingEnabled={true}
       >
+        <HeaderFilter visible={true} />
         <Paging defaultPageSize={10} />
         <Pager showPageSizeSelector={true} showInfo={true} />
-        <Column dataField={'title'} caption={'Product Name'} />
+
+        <Column
+          dataField={'title'}
+          caption={'Product Name'}
+          allowHeaderFiltering={true}
+        />
         <Column
           dataField={'price'}
           caption={'Price'}
-          cellRender={(cellData) => `$ ${cellData.value}`}
+          alignment="center"
+          cellRender={(cellData: { value: number }) =>
+            `$ ${cellData.value.toFixed(2)}`
+          }
+          allowHeaderFiltering={true}
         />
-        <Column dataField={'category'} caption={'Category'} />
+        <Column
+          dataField={'quantity'}
+          caption={'Quantity'}
+          alignment="center"
+          allowHeaderFiltering={true}
+        />
+        <Column
+          dataField={'total'}
+          caption={'Total'}
+          alignment="center"
+          cellRender={(cellData: { value: number }) =>
+            `$ ${cellData.value.toFixed(2)}`
+          }
+          allowHeaderFiltering={true}
+        />
         <Column
           dataField={'discountPercentage'}
-          caption={'Discount Percentage'}
-        />
-        <Column
-          caption={'Total Price'}
-          calculateCellValue={(rowData) => rowData.price} // Total price
+          caption={'Discount %'}
+          alignment="center"
+          cellRender={discountCellRender}
+          allowHeaderFiltering={true}
         />
         <Column
           caption={'Discounted Total'}
-          calculateCellValue={(rowData) => {
-            const price = rowData.price;
-            const discount = rowData.discountPercentage || 0;
-            return price - (price * discount) / 100;
+          alignment="center"
+          calculateCellValue={(rowData: CartProduct) => {
+            const discountedTotal =
+              rowData.total -
+              (rowData.total * rowData.discountPercentage) / 100;
+            return `$ ${discountedTotal.toFixed(2)}`;
           }}
+          allowHeaderFiltering={true}
         />
       </DataGrid>
     </React.Fragment>
