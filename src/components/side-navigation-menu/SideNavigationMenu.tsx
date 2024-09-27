@@ -8,43 +8,43 @@ import type { SideNavigationMenuProps } from '../../types';
 
 import * as events from 'devextreme/events';
 
-export default function SideNavigationMenu(props: React.PropsWithChildren<SideNavigationMenuProps>) {
-  const {
-    children,
-    selectedItemChanged,
-    openMenu,
-    compactMode,
-    onMenuReady
-  } = props;
+export default function SideNavigationMenu(
+  props: React.PropsWithChildren<SideNavigationMenuProps>
+) {
+  const { children, selectedItemChanged, openMenu, compactMode, onMenuReady } =
+    props;
 
   const { isLarge } = useScreenSize();
-  function normalizePath () {
-    return navigation.map((item) => (
-      { ...item, expanded: isLarge, path: item.path && !(/^\//.test(item.path)) ? `/${item.path}` : item.path }
-    ))
+  function normalizePath() {
+    return navigation.map((item) => ({
+      ...item,
+      expanded: isLarge,
+      path: item.path && !/^\//.test(item.path) ? `/${item.path}` : item.path,
+    }));
   }
 
-  const items = useMemo(
-    normalizePath,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  const items = useMemo(normalizePath, []);
 
-  const { navigationData: { currentPath } } = useNavigation();
+  const {
+    navigationData: { currentPath },
+  } = useNavigation();
 
   const treeViewRef = useRef<TreeViewRef>(null);
   const wrapperRef = useRef<HTMLDivElement>();
-  const getWrapperRef = useCallback((element: HTMLDivElement) => {
-    const prevElement = wrapperRef.current;
-    if (prevElement) {
-      events.off(prevElement, 'dxclick');
-    }
+  const getWrapperRef = useCallback(
+    (element: HTMLDivElement) => {
+      const prevElement = wrapperRef.current;
+      if (prevElement) {
+        events.off(prevElement, 'dxclick');
+      }
 
-    wrapperRef.current = element;
-    events.on(element, 'dxclick', (e: React.PointerEvent) => {
-      openMenu(e);
-    });
-  }, [openMenu]);
+      wrapperRef.current = element;
+      events.on(element, 'dxclick', (e: React.PointerEvent) => {
+        openMenu(e);
+      });
+    },
+    [openMenu]
+  );
 
   useEffect(() => {
     const treeView = treeViewRef.current && treeViewRef.current.instance();

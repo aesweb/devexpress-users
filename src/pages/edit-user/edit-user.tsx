@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Form, { Item, GroupItem } from 'devextreme-react/form';
 import DataGrid, {
@@ -14,161 +14,69 @@ import LoadIndicator from 'devextreme-react/load-indicator';
 import { useUser } from '../../contexts/UserContext';
 import Button from 'devextreme-react/button';
 import './edit-user.scss';
-
-interface User {
-  id: number;
-  firstName: string;
-  lastName: string;
-  maidenName: string;
-  age: number;
-  gender: string;
-  email: string;
-  phone: string;
-  username: string;
-  password: string;
-  birthDate: string;
-  image: string;
-  bloodGroup: string;
-  height: number;
-  weight: number;
-  eyeColor: string;
-  hair: {
-    color: string;
-    type: string;
-  };
-  ip: string;
-  address: {
-    address: string;
-    city: string;
-    state: string;
-    stateCode: string;
-    postalCode: string;
-    coordinates: {
-      lat: number;
-      lng: number;
-    };
-    country: string;
-  };
-  macAddress: string;
-  university: string;
-  bank: {
-    cardExpire: string;
-    cardNumber: string;
-    cardType: string;
-    currency: string;
-    iban: string;
-  };
-  company: {
-    department: string;
-    name: string;
-    title: string;
-    address: {
-      address: string;
-      city: string;
-      state: string;
-      stateCode: string;
-      postalCode: string;
-      coordinates: {
-        lat: number;
-        lng: number;
-      };
-      country: string;
-    };
-  };
-  ein: string;
-  ssn: string;
-  userAgent: string;
-  crypto: {
-    coin: string;
-    wallet: string;
-    network: string;
-  };
-  role: string;
-}
-
-interface CartProduct {
-  id: number;
-  title: string;
-  price: number;
-  quantity: number;
-  total: number;
-  discountPercentage: number;
-  cartId?: number;
-}
+import { ExtendedUser, CartProduct } from '../../types';
 
 export default function EditUser() {
   const { id } = useParams<{ id: string }>();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { setUpdatedUser, users, setUsers, cartProducts, setCartProducts } = useUser();
+  const { setUpdatedUser, users, setUsers, cartProducts, setCartProducts } =
+    useUser();
   const [updatedProducts, setUpdatedProducts] = useState<CartProduct[]>([]);
   const [deletedProductIds, setDeletedProductIds] = useState<number[]>([]);
 
-  useEffect(() => {
-    const fetchUserAndCart = async () => {
-      try {
-        let userData;
-        const existingUser = users.find((u) => u.id === Number(id));
-        if (existingUser) {
-          userData = existingUser;
-        } else {
-          const userResponse = await fetch(`https://dummyjson.com/users/${id}`);
-          userData = await userResponse.json();
-        }
-        setUser(userData);
+  const userId = useMemo(() => Number(id), [id]);
 
-        if (!cartProducts[Number(id)]) {
-          const cartResponse = await fetch(
-            `https://dummyjson.com/carts/user/${id}`
-          );
-          const cartData = await cartResponse.json();
-          const products = cartData.carts.flatMap((cart: any) =>
-            cart.products.map((product: CartProduct) => ({
-              ...product,
-              cartId: cart.id,
-            }))
-          );
-          setCartProducts((prev) => ({ ...prev, [Number(id)]: products }));
-        }
-      } catch (error) {
-        console.error('Error fetching user or cart:', error);
-      } finally {
-        setLoading(false);
+  const fetchUserAndCart = useCallback(async () => {
+    try {
+      let userData =
+        users.find((u) => u.id === userId) ||
+        (await (await fetch(`https://dummyjson.com/users/${id}`)).json());
+      setUser(userData);
+
+      if (!cartProducts[userId]) {
+        const cartData = await (
+          await fetch(`https://dummyjson.com/carts/user/${id}`)
+        ).json();
+        const products = cartData.carts.flatMap((cart: any) =>
+          cart.products.map((product: CartProduct) => ({
+            ...product,
+            cartId: cart.id,
+          }))
+        );
+        setCartProducts((prev) => ({ ...prev, [userId]: products }));
       }
-    };
+    } catch (error) {
+      console.error('Error fetching user or cart:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [id, userId, users, cartProducts, setCartProducts]);
 
+  useEffect(() => {
     fetchUserAndCart();
-  }, [id, users, cartProducts, setCartProducts]);
+  }, [fetchUserAndCart]);
 
-  const handleFieldDataChanged = (e: any) => {
-    if (user) {
-      const { dataField, value } = e;
-      setUser((prevUser) => {
-        if (!prevUser) return null;
+  const handleFieldDataChanged = useCallback((e: any) => {
+    const { dataField, value } = e;
+    setUser((prevUser) => {
+      if (!prevUser) return null;
 
-        // Nested alanlar için özel işlem
-        if (dataField.includes('.')) {
-          const [parent, child] = dataField.split('.');
-          return {
-            ...prevUser,
-            [parent]: {
-              ...(typeof prevUser[parent as keyof User] === 'object' &&
-              prevUser[parent as keyof User] !== null
-                ? (prevUser[parent as keyof User] as Record<string, unknown>)
-                : {}),
-              [child]: value,
-            },
-          };
-        }
-
+      if (dataField.includes('.')) {
+        const [parent, child] = dataField.split('.');
         return {
           ...prevUser,
-          [dataField]: value,
+          [parent]: {
+            ...(prevUser[parent as keyof ExtendedUser] as Record<string, unknown>),
+            [child]: value,
+          },
         };
-      });
-    }
-  };
+      }
+
+      return { ...prevUser, [dataField]: value };
+    });
+  }, []);
 
   const handleProductUpdate = useCallback(
     (key: number, data: Partial<CartProduct>) => {
@@ -184,20 +92,20 @@ export default function EditUser() {
     []
   );
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!user) return;
 
     try {
-      const response = await fetch(`https://dummyjson.com/users/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user),
-      });
-      const updatedUser = await response.json();
+      const updatedUser = await (
+        await fetch(`https://dummyjson.com/users/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(user),
+        })
+      ).json();
       setUpdatedUser(updatedUser);
 
-      // Update products
-      const updatedCartProducts = cartProducts[Number(id)]
+      const updatedCartProducts = cartProducts[userId]
         .map((product) => {
           const updatedProduct = updatedProducts.find(
             (p) => p.id === product.id
@@ -206,44 +114,41 @@ export default function EditUser() {
         })
         .filter((product) => !deletedProductIds.includes(product.id));
 
-      setCartProducts((prev) => ({
-        ...prev,
-        [Number(id)]: updatedCartProducts,
-      }));
+      setCartProducts((prev) => ({ ...prev, [userId]: updatedCartProducts }));
 
       navigate('/users');
     } catch (error) {
       console.error('Error updating user or products:', error);
     }
-  };
-
-  const handleCancel = () => {
-    navigate('/users');
-  };
+  }, [
+    user,
+    id,
+    userId,
+    cartProducts,
+    updatedProducts,
+    deletedProductIds,
+    setUpdatedUser,
+    setCartProducts,
+    navigate,
+  ]);
 
   const handleDelete = useCallback(() => {
     if (window.confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter(u => u.id !== Number(id)));
-      setCartProducts(prev => {
-        const newCartProducts = { ...prev };
-        delete newCartProducts[Number(id)];
-        return newCartProducts;
+      setUsers(users.filter((u) => u.id !== userId));
+      setCartProducts((prev) => {
+        const { [userId]: _, ...rest } = prev;
+        return rest;
       });
       navigate('/users');
     }
-  }, [id, setUsers, users, setCartProducts, navigate]);
+  }, [userId, setUsers, users, setCartProducts, navigate]);
 
   const discountCellRender = (cellData: { value: number }) => (
     <div className="discount-cell">{cellData.value.toFixed(2)}%</div>
   );
 
-  if (loading) {
-    return <LoadIndicator />;
-  }
-
-  if (!user) {
-    return <div>User not found</div>;
-  }
+  if (loading) return <LoadIndicator />;
+  if (!user) return <div>User not found</div>;
 
   return (
     <React.Fragment>
@@ -306,14 +211,14 @@ export default function EditUser() {
       <div className="button-container">
         <Button text="Save" type="success" onClick={handleSubmit} />
         <Button text="Delete" type="danger" onClick={handleDelete} />
-        <Button text="Cancel" onClick={handleCancel} />
+        <Button text="Cancel" onClick={() => navigate('/users')} />
       </div>
 
       <h2 className={'content-block'}>User's Cart Products</h2>
       <DataGrid
         className="content-block dx-card responsive-paddings user-cart-grid"
         dataSource={
-          cartProducts[Number(id)]?.filter(
+          cartProducts[userId]?.filter(
             (p) => !deletedProductIds.includes(p.id)
           ) || []
         }
@@ -326,7 +231,7 @@ export default function EditUser() {
         onRowUpdating={(e) => handleProductUpdate(e.key, e.newData)}
         onRowRemoving={(e) => {
           setDeletedProductIds((prev) => [...prev, e.key]);
-          e.cancel = true; // Gerçek silme işlemini engelle
+          e.cancel = true;
         }}
       >
         <Editing

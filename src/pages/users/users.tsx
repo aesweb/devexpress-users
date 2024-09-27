@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import DataGrid, {
   Column,
   FilterRow,
@@ -13,26 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import Button from 'devextreme-react/button';
 import './users.css';
 import { useUser } from '../../contexts/UserContext';
-
-interface User {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  image: any;
-}
-
-interface CartProduct {
-  id: number;
-  title: string;
-  price: number;
-  quantity: number;
-  total: number;
-  discountPercentage: number;
-  cartId?: number;
-  thumbnail: any;
-}
+import { ExtendedUser, CartProduct } from '../../types';
 
 export default function Users() {
   const {
@@ -48,26 +29,34 @@ export default function Users() {
 
   const fetchUsers = useCallback(async () => {
     if (users.length === 0) {
-      const response = await fetch('https://dummyjson.com/users');
-      const data = await response.json();
-      setUsers(data.users);
+      try {
+        const response = await fetch('https://dummyjson.com/users');
+        const data = await response.json();
+        setUsers(data.users);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
     }
-  }, [users, setUsers]);
+  }, [users.length, setUsers]);
 
   const fetchUserCart = useCallback(
     async (userId: number) => {
       if (!cartProducts[userId]) {
-        const response = await fetch(
-          `https://dummyjson.com/carts/user/${userId}`
-        );
-        const data = await response.json();
-        const products = data.carts.flatMap((cart: any) =>
-          cart.products.map((product: CartProduct) => ({
-            ...product,
-            cartId: cart.id,
-          }))
-        );
-        setCartProducts((prev) => ({ ...prev, [userId]: products }));
+        try {
+          const response = await fetch(
+            `https://dummyjson.com/carts/user/${userId}`
+          );
+          const data = await response.json();
+          const products = data.carts.flatMap((cart: any) =>
+            cart.products.map((product: CartProduct) => ({
+              ...product,
+              cartId: cart.id,
+            }))
+          );
+          setCartProducts((prev) => ({ ...prev, [userId]: products }));
+        } catch (error) {
+          console.error('Error fetching user cart:', error);
+        }
       }
     },
     [cartProducts, setCartProducts]
@@ -94,23 +83,23 @@ export default function Users() {
     }
   }, [selectedUserId, fetchUserCart]);
 
-  const onFocusedRowChanged = (e: FocusedRowChangedEvent) => {
+  const onFocusedRowChanged = useCallback((e: FocusedRowChangedEvent) => {
     setSelectedUserId(e.row?.data.id);
-  };
+  }, []);
 
-  const discountCellRender = (cellData: { value: number }) => (
+  const discountCellRender = useCallback((cellData: { value: number }) => (
     <div className="discount-cell">{cellData.value.toFixed(2)}%</div>
-  );
+  ), []);
 
-  const editUser = (userId: number) => {
+  const editUser = useCallback((userId: number) => {
     navigate(`/edit-user/${userId}`);
-  };
+  }, [navigate]);
 
-  const renderEditButton = (cellData: { data: User }) => {
+  const renderEditButton = useCallback((cellData: { data: ExtendedUser }) => {
     return <Button icon="edit" onClick={() => editUser(cellData.data.id)} />;
-  };
+  }, [editUser]);
 
-  const renderUserCell = (cellData: { data: User }) => {
+  const renderUserCell = useCallback((cellData: { data: ExtendedUser }) => {
     return (
       <div className="user-cell">
         <img
@@ -121,9 +110,9 @@ export default function Users() {
         <span>{`${cellData.data.firstName} ${cellData.data.lastName}`}</span>
       </div>
     );
-  };
+  }, []);
 
-  const renderProductCell = (cellData: { data: CartProduct }) => {
+  const renderProductCell = useCallback((cellData: { data: CartProduct }) => {
     return (
       <div className="product-cell">
         <img
@@ -134,7 +123,13 @@ export default function Users() {
         <span>{cellData.data.title}</span>
       </div>
     );
-  };
+  }, []);
+
+  const userDataSource = useMemo(() => users, [users]);
+  const cartDataSource = useMemo(() => 
+    selectedUserId ? cartProducts[selectedUserId] || [] : [],
+    [selectedUserId, cartProducts]
+  );
 
   return (
     <React.Fragment>
@@ -142,7 +137,7 @@ export default function Users() {
       <DataGrid
         className="content-block dx-card responsive-paddings"
         allowColumnReordering={true}
-        dataSource={users}
+        dataSource={userDataSource}
         keyExpr="id"
         showBorders={true}
         focusedRowEnabled={true}
@@ -195,7 +190,7 @@ export default function Users() {
       <h2 className={'content-block'}>User's Cart Products</h2>
       <DataGrid
         className="content-block dx-card responsive-paddings"
-        dataSource={selectedUserId ? cartProducts[selectedUserId] || [] : []}
+        dataSource={cartDataSource}
         keyExpr="id"
         showBorders={true}
         focusedRowEnabled={true}

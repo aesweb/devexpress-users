@@ -57,3 +57,77 @@ export type NavigationContextType = {
 export type ValidationType = {
   value: string;
 };
+
+export interface ExtendedUser extends User {
+  id: number;
+  firstName: string;
+  lastName: string;
+  maidenName: string;
+  age: number;
+  gender: string;
+  phone: string;
+  username: string;
+  password: string;
+  birthDate: string;
+  image: string;
+  bloodGroup: string;
+  height: number;
+  weight: number;
+  eyeColor: string;
+  hair: {
+    color: string;
+    type: string;
+  };
+  address: {
+    address: string;
+    city: string;
+    state: string;
+    stateCode: string;
+    postalCode: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    };
+    country: string;
+  };
+  company: {
+    department: string;
+    name: string;
+    title: string;
+    address: {
+      address: string;
+      city: string;
+      state: string;
+      stateCode: string;
+      postalCode: string;
+      coordinates: {
+        lat: number;
+        lng: number;
+      };
+      country: string;
+    };
+  };
+  bank: {
+    cardExpire: string;
+    cardNumber: string;
+    cardType: string;
+    currency: string;
+    iban: string;
+  };
+  crypto: {
+    coin: string;
+    wallet: string;
+    network: string;
+  };
+}
+
+export interface CartProduct {
+  id: number;
+  title: string;
+  price: number;
+  quantity: number;
+  total: number;
+  discountPercentage: number;
+  cartId?: number;
+  thumbnail: string;
+}
