@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Form, { Item, GroupItem, ButtonItem } from 'devextreme-react/form';
+import Form, { Item, GroupItem } from 'devextreme-react/form';
 import DataGrid, {
   Column,
   HeaderFilter,
@@ -12,6 +12,8 @@ import DataGrid, {
 } from 'devextreme-react/data-grid';
 import LoadIndicator from 'devextreme-react/load-indicator';
 import { useUser } from '../../contexts/UserContext';
+import Button from 'devextreme-react/button';
+import './edit-user.scss';
 
 interface User {
   id: number;
@@ -99,7 +101,7 @@ export default function EditUser() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { setUpdatedUser, users, cartProducts, setCartProducts } = useUser();
+  const { setUpdatedUser, users, setUsers, cartProducts, setCartProducts } = useUser();
   const [updatedProducts, setUpdatedProducts] = useState<CartProduct[]>([]);
   const [deletedProductIds, setDeletedProductIds] = useState<number[]>([]);
 
@@ -219,6 +221,18 @@ export default function EditUser() {
     navigate('/users');
   };
 
+  const handleDelete = useCallback(() => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      setUsers(users.filter(u => u.id !== Number(id)));
+      setCartProducts(prev => {
+        const newCartProducts = { ...prev };
+        delete newCartProducts[Number(id)];
+        return newCartProducts;
+      });
+      navigate('/users');
+    }
+  }, [id, setUsers, users, setCartProducts, navigate]);
+
   const discountCellRender = (cellData: { value: number }) => (
     <div className="discount-cell">{cellData.value.toFixed(2)}%</div>
   );
@@ -286,30 +300,18 @@ export default function EditUser() {
               <Item dataField="company.title" />
             </GroupItem>
           </GroupItem>
-
-          <ButtonItem
-            horizontalAlignment="left"
-            buttonOptions={{
-              text: 'Save',
-              type: 'success',
-              useSubmitBehavior: true,
-              onClick: handleSubmit,
-            }}
-          />
-          <ButtonItem
-            horizontalAlignment="left"
-            buttonOptions={{
-              text: 'Cancel',
-              type: 'normal',
-              onClick: handleCancel,
-            }}
-          />
         </Form>
+      </div>
+
+      <div className="button-container">
+        <Button text="Save" type="success" onClick={handleSubmit} />
+        <Button text="Delete" type="danger" onClick={handleDelete} />
+        <Button text="Cancel" onClick={handleCancel} />
       </div>
 
       <h2 className={'content-block'}>User's Cart Products</h2>
       <DataGrid
-        className="content-block dx-card responsive-paddings"
+        className="content-block dx-card responsive-paddings user-cart-grid"
         dataSource={
           cartProducts[Number(id)]?.filter(
             (p) => !deletedProductIds.includes(p.id)
@@ -322,6 +324,10 @@ export default function EditUser() {
         wordWrapEnabled={true}
         columnHidingEnabled={true}
         onRowUpdating={(e) => handleProductUpdate(e.key, e.newData)}
+        onRowRemoving={(e) => {
+          setDeletedProductIds((prev) => [...prev, e.key]);
+          e.cancel = true; // Gerçek silme işlemini engelle
+        }}
       >
         <Editing
           mode="row"
